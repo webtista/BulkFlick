@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, protocol } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ensureLogin, getAlbums, getAlbumPhotos } from "./app/flickr.main.js";
@@ -6,6 +6,13 @@ import { readToken, clearToken } from "./app/secure-store.js";
 import type { SizePref } from "./app/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "bulkflick",
+    privileges: { standard: true, secure: true, supportFetchAPI: true }
+  }
+]);
 
 async function createWindow() {
   const win = new BrowserWindow({
