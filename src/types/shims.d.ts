@@ -54,9 +54,16 @@ declare module "electron" {
     webPreferences?: Record<string, unknown>;
   }
 
+  export interface WebRequest {
+    onBeforeRequest(filter: unknown, listener?: (details: any) => void): void;
+  }
+
   export class WebContents {
     getWebPreferences(): { partition?: string };
     openDevTools(options?: unknown): void;
+    readonly session: {
+      webRequest: WebRequest;
+    };
   }
 
   export class BrowserWindow {
@@ -83,9 +90,7 @@ declare module "electron" {
 
   export const session: {
     fromPartition(partition: string): {
-      webRequest: {
-        onBeforeRequest(filter: unknown, listener?: (details: any) => void): void;
-      };
+      webRequest: WebRequest;
     };
   };
 
