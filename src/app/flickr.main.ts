@@ -11,8 +11,8 @@ const REST = "https://api.flickr.com/services/rest/";
 
 // NOTE: Put your keys here for local dev; later load from env/secure store.
 const FLICKR: FlickrSecrets = {
-  apiKey: process.env.FLICKR_API_KEY ?? "<YOUR_FLICKR_API_KEY>",
-  apiSecret: process.env.FLICKR_API_SECRET ?? "<YOUR_FLICKR_API_SECRET>"
+  apiKey: process.env.FLICKR_API_KEY ?? "4718b07806e88233ce47ee5f53e744be",
+  apiSecret: process.env.FLICKR_API_SECRET ?? "7d2806f617398732"
 };
 
 // ====== OAuth 1.0a utils ======
