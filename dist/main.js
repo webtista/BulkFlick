@@ -37,8 +37,8 @@ app.on("window-all-closed", () => {
 ipcMain.handle("auth:status", async () => {
     return { token: readToken() != null };
 });
-ipcMain.handle("auth:login", async (e) => {
-    const win = BrowserWindow.fromWebContents(e.sender);
+ipcMain.handle("auth:login", async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
     const t = await ensureLogin(win || undefined);
     return { ok: true, user: { nsid: t.user_nsid, username: t.username, fullname: t.fullname } };
 });
@@ -46,9 +46,9 @@ ipcMain.handle("auth:logout", async () => {
     clearToken();
     return { ok: true };
 });
-ipcMain.handle("flickr:getAlbums", async (_e, { page, perPage }) => {
+ipcMain.handle("flickr:getAlbums", async (_event, { page, perPage }) => {
     return await getAlbums(page, perPage);
 });
-ipcMain.handle("flickr:getAlbumPhotos", async (_e, { photosetId, size }) => {
+ipcMain.handle("flickr:getAlbumPhotos", async (_event, { photosetId, size }) => {
     return await getAlbumPhotos(photosetId, size);
 });
