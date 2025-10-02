@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self';"
+  />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BulkFlick</title>
+  <link rel="stylesheet" href="./assets/styles.css" />
+</head>
+<body class="min-h-dvh bg-zinc-950 text-zinc-100 antialiased">
+
+  <!-- Welcome / Auth Screen -->
+  <section id="welcome" class="grid place-items-center min-h-dvh p-6">
+    <div class="max-w-xl text-center space-y-6">
+      <!-- Simple logo mark -->
+      <div class="mx-auto h-16 w-16 rounded-2xl grid place-items-center bg-indigo-600/20 ring-1 ring-indigo-600/40">
+        <svg viewBox="0 0 24 24" class="h-8 w-8">
+          <circle cx="8" cy="12" r="4" class="fill-pink-500"></circle>
+          <circle cx="16" cy="12" r="4" class="fill-sky-500"></circle>
+        </svg>
+      </div>
+
+      <div>
+        <h1 class="text-3xl font-semibold tracking-tight">BulkFlick</h1>
+        <p class="text-zinc-400 mt-1">Bulk download Flickr albums & images</p>
+      </div>
+
+      <div class="space-y-3">
+        <button id="loginBtn"
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 bg-indigo-600 hover:bg-indigo-500 ring-1 ring-inset ring-indigo-400/50">
+          <svg viewBox="0 0 24 24" class="h-5 w-5"><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m9.9 9.9l1.4 1.4M5.6 18.4l1.4-1.4m9.9-9.9l1.4-1.4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+          Login with Flickr
+        </button>
+        <p class="text-xs text-zinc-500">We’ll open Flickr to authorize read access to your albums.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main App Screen -->
+  <section id="app" class="hidden min-h-dvh">
+    <!-- Top bar -->
+    <header class="sticky top-0 z-10 backdrop-blur bg-zinc-950/70 border-b border-zinc-900">
+      <div class="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <div class="h-7 w-7 rounded-lg grid place-items-center bg-indigo-600/20 ring-1 ring-indigo-600/40">
+            <svg viewBox="0 0 24 24" class="h-4 w-4">
+              <circle cx="8" cy="12" r="4" class="fill-pink-500"></circle>
+              <circle cx="16" cy="12" r="4" class="fill-sky-500"></circle>
+            </svg>
+          </div>
+          <span class="font-medium">BulkFlick</span>
+        </div>
+
+        <div class="ms-auto w-full sm:w-auto sm:flex-1 max-w-xl">
+          <label for="search" class="sr-only">Search Flickr albums</label>
+          <div class="relative">
+            <input id="search" placeholder="Search your Flickr albums…"
+                   class="w-full rounded-xl bg-zinc-900/80 ring-1 ring-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-600 px-4 py-2.5 pr-24" />
+            <button id="searchBtn"
+                    class="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-sm">
+              Fetch
+            </button>
+          </div>
+        </div>
+
+        <button id="openSettings"
+                class="ms-3 rounded-lg px-3 py-2 bg-zinc-800 hover:bg-zinc-700 ring-1 ring-zinc-700 text-sm">
+          Settings
+        </button>
+      </div>
+    </header>
+
+    <!-- Content area -->
+    <div class="mx-auto max-w-6xl px-4 py-6 grid gap-6 lg:grid-cols-12">
+      <!-- Albums Grid -->
+      <section aria-labelledby="albumsTitle" class="lg:col-span-8">
+        <div class="flex items-baseline justify-between">
+          <h2 id="albumsTitle" class="text-lg font-medium">Your Albums</h2>
+          <span id="albumsCount" class="text-xs text-zinc-500">0 albums</span>
+        </div>
+
+        <div id="albumsGrid"
+             class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <!-- Cards injected by TS -->
+        </div>
+      </section>
+
+      <!-- Settings Panel -->
+      <aside id="settingsPanel" class="lg:col-span-4 h-fit rounded-2xl ring-1 ring-zinc-800 bg-zinc-900/50 p-4 space-y-4">
+        <div>
+          <h3 class="text-base font-medium">Settings</h3>
+          <p class="text-xs text-zinc-500">Applied to new downloads</p>
+        </div>
+
+        <!-- Image size -->
+        <fieldset class="space-y-2">
+          <legend class="text-sm font-medium">Image size</legend>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <label class="flex items-center gap-2 rounded-lg ring-1 ring-zinc-800 px-3 py-2">
+              <input type="radio" name="imgsize" value="Small" class="accent-indigo-600" checked />
+              <span>Small</span>
+            </label>
+            <label class="flex items-center gap-2 rounded-lg ring-1 ring-zinc-800 px-3 py-2">
+              <input type="radio" name="imgsize" value="Medium" class="accent-indigo-600" />
+              <span>Medium</span>
+            </label>
+            <label class="flex items-center gap-2 rounded-lg ring-1 ring-zinc-800 px-3 py-2">
+              <input type="radio" name="imgsize" value="Large" class="accent-indigo-600" />
+              <span>Large</span>
+            </label>
+            <label class="flex items-center gap-2 rounded-lg ring-1 ring-zinc-800 px-3 py-2">
+              <input type="radio" name="imgsize" value="Original" class="accent-indigo-600" />
+              <span>Original</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- Download folder -->
+        <div class="space-y-2">
+          <label for="downloadFolder" class="text-sm font-medium">Download folder</label>
+          <div class="flex gap-2">
+            <input id="downloadFolder" type="text" readonly
+                   class="flex-1 rounded-xl bg-zinc-900/80 ring-1 ring-zinc-800 px-3 py-2 text-sm"
+                   placeholder="Choose a folder…" />
+            <button id="chooseFolderBtn"
+                    class="rounded-lg px-3 py-2 bg-zinc-800 hover:bg-zinc-700 ring-1 ring-zinc-700 text-sm">
+              Choose…
+            </button>
+          </div>
+        </div>
+
+        <button id="downloadSelected"
+                class="w-full rounded-xl px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 ring-1 ring-indigo-400/50">
+          Download Selected
+        </button>
+      </aside>
+    </div>
+  </section>
+
+  <script type="module" src="../dist/renderer.js"></script>
+</body>
+</html>
