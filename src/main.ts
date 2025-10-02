@@ -43,8 +43,8 @@ app.on("window-all-closed", () => {
 ipcMain.handle("auth:status", async () => {
   return { token: readToken() != null };
 });
-ipcMain.handle("auth:login", async (e) => {
-  const win = BrowserWindow.fromWebContents(e.sender);
+ipcMain.handle("auth:login", async (event: any) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
   const t = await ensureLogin(win || undefined);
   return { ok: true, user: { nsid: t.user_nsid, username: t.username, fullname: t.fullname } };
 });
@@ -53,10 +53,13 @@ ipcMain.handle("auth:logout", async () => {
   return { ok: true };
 });
 
-ipcMain.handle("flickr:getAlbums", async (_e, { page, perPage }: { page: number; perPage: number }) => {
+ipcMain.handle("flickr:getAlbums", async (_event: any, { page, perPage }: { page: number; perPage: number }) => {
   return await getAlbums(page, perPage);
 });
 
-ipcMain.handle("flickr:getAlbumPhotos", async (_e, { photosetId, size }: { photosetId: string; size: SizePref }) => {
+ipcMain.handle("flickr:getAlbumPhotos", async (
+  _event: any,
+  { photosetId, size }: { photosetId: string; size: SizePref }
+) => {
   return await getAlbumPhotos(photosetId, size);
 });

@@ -141,9 +141,15 @@ async function flickr(method, params) {
 }
 // ====== High-level API ======
 export async function getAlbums(page = 1, perPage = 24) {
-    const token = readToken();
+    let token = readToken();
+    if (!token?.user_nsid) {
+        token = await ensureLogin();
+        if (!token?.user_nsid) {
+            token = readToken();
+        }
+    }
     if (!token?.user_nsid)
-        await ensureLogin();
+        throw new Error("Failed to obtain Flickr user id");
     const data = await flickr("flickr.photosets.getList", {
         user_id: token.user_nsid,
         page,
