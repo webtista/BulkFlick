@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { BrowserWindow, session } from "electron";
+import { BrowserWindow } from "electron";
 import { URLSearchParams } from "node:url";
 import { readToken, writeToken } from "./secure-store.js";
 // ====== CONFIG ======
@@ -78,7 +78,7 @@ export async function ensureLogin(parent) {
     });
     popup.removeMenu?.();
     await popup.loadURL(authUrl);
-    const ses = session.fromPartition(popup.webContents.getWebPreferences().partition || "");
+    const ses = popup.webContents.session;
     const verifier = await new Promise((resolve, reject) => {
         const handler = (details) => {
             if (details.url.startsWith(CALLBACK_SCHEME)) {
