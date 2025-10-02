@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { BrowserWindow, session } from "electron";
+import { BrowserWindow } from "electron";
 import { URLSearchParams } from "node:url";
 import { readToken, writeToken } from "./secure-store.js";
 import type { OAuthToken, AlbumsPage, Album, DownloadImage, SizePref, FlickrSecrets } from "./types.js";
@@ -85,7 +85,7 @@ export async function ensureLogin(parent?: BrowserWindow): Promise<OAuthToken> {
   popup.removeMenu?.();
   await popup.loadURL(authUrl);
 
-  const ses = session.fromPartition(popup.webContents.getWebPreferences().partition || "");
+  const ses = popup.webContents.session;
   const verifier: string = await new Promise((resolve, reject) => {
     const handler = (details: any) => {
       if (details.url.startsWith(CALLBACK_SCHEME)) {
