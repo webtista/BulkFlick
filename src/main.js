@@ -3,7 +3,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ensureLogin, getAlbums, getAlbumPhotos } from "./app/flickr.main.js";
 import { readToken, clearToken } from "./app/secure-store.js";
-import type { SizePref } from "./app/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -50,7 +49,7 @@ app.on("window-all-closed", () => {
 ipcMain.handle("auth:status", async () => {
   return { token: readToken() != null };
 });
-ipcMain.handle("auth:login", async (event: any) => {
+ipcMain.handle("auth:login", async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   const t = await ensureLogin(win || undefined);
   return { ok: true, user: { nsid: t.user_nsid, username: t.username, fullname: t.fullname } };
@@ -60,13 +59,10 @@ ipcMain.handle("auth:logout", async () => {
   return { ok: true };
 });
 
-ipcMain.handle("flickr:getAlbums", async (_event: any, { page, perPage }: { page: number; perPage: number }) => {
+ipcMain.handle("flickr:getAlbums", async (_event, { page, perPage }) => {
   return await getAlbums(page, perPage);
 });
 
-ipcMain.handle("flickr:getAlbumPhotos", async (
-  _event: any,
-  { photosetId, size }: { photosetId: string; size: SizePref }
-) => {
+ipcMain.handle("flickr:getAlbumPhotos", async (_event, { photosetId, size }) => {
   return await getAlbumPhotos(photosetId, size);
 });

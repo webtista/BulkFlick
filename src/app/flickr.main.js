@@ -1,8 +1,16 @@
 import crypto from "node:crypto";
-import { BrowserWindow, type Event as ElectronEvent } from "electron";
+import { BrowserWindow } from "electron";
 import { URLSearchParams } from "node:url";
 import { readToken, writeToken } from "./secure-store.js";
-import type { OAuthToken, AlbumsPage, Album, DownloadImage, SizePref, FlickrSecrets } from "./types.js";
+
+/**
+ * @typedef {import("./types.js").OAuthToken} OAuthToken
+ * @typedef {import("./types.js").AlbumsPage} AlbumsPage
+ * @typedef {import("./types.js").Album} Album
+ * @typedef {import("./types.js").DownloadImage} DownloadImage
+ * @typedef {import("./types.js").SizePref} SizePref
+ * @typedef {import("./types.js").FlickrSecrets} FlickrSecrets
+ */
 
 // ====== CONFIG ======
 const CALLBACK_SCHEME = "bulkflick://auth";
@@ -10,28 +18,29 @@ const FLICKR_BASE = "https://www.flickr.com/services";
 const REST = "https://api.flickr.com/services/rest/";
 
 // NOTE: Put your keys here for local dev; later load from env/secure store.
-const FLICKR: FlickrSecrets = {
+/** @type {FlickrSecrets} */
+const FLICKR = {
   apiKey: process.env.FLICKR_API_KEY ?? "4718b07806e88233ce47ee5f53e744be",
   apiSecret: process.env.FLICKR_API_SECRET ?? "7d2806f617398732"
 };
 
 // ====== OAuth 1.0a utils ======
-function percent(v: string) {
+function percent(v) {
   return encodeURIComponent(v).replace(/[!*()']/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
 }
-function baseString(method: string, url: string, params: Record<string, string>) {
+function baseString(method, url, params) {
   const normalized = Object.keys(params)
     .sort()
     .map(k => `${percent(k)}=${percent(params[k])}`)
     .join("&");
   return [method.toUpperCase(), percent(url), percent(normalized)].join("&");
 }
-function sign(method: string, url: string, params: Record<string, string>, consumerSecret: string, tokenSecret = "") {
+function sign(method, url, params, consumerSecret, tokenSecret = "") {
   const key = `${percent(consumerSecret)}&${percent(tokenSecret)}`;
   const text = baseString(method, url, params);
   return crypto.createHmac("sha1", key).update(text).digest("base64");
 }
-function oauthParams(extra: Record<string, string> = {}) {
+function oauthParams(extra = {}) {
   return {
     oauth_consumer_key: FLICKR.apiKey,
     oauth_nonce: crypto.randomBytes(16).toString("hex"),
@@ -42,7 +51,7 @@ function oauthParams(extra: Record<string, string> = {}) {
   };
 }
 
-function toQuery(obj: Record<string, string | number | boolean | undefined>) {
+function toQuery(obj) {
   const q = new URLSearchParams();
   Object.entries(obj).forEach(([k, v]) => {
     if (v === undefined) return;
@@ -52,7 +61,11 @@ function toQuery(obj: Record<string, string | number | boolean | undefined>) {
 }
 
 // ====== OAuth Flow ======
-export async function ensureLogin(parent?: BrowserWindow): Promise<OAuthToken> {
+/**
+ * @param {BrowserWindow} [parent]
+ * @returns {Promise<OAuthToken>}
+ */
+export async function ensureLogin(parent) {
   const existing = readToken();
   if (existing?.oauth_token && existing?.oauth_token_secret) return existing;
 
@@ -85,7 +98,7 @@ export async function ensureLogin(parent?: BrowserWindow): Promise<OAuthToken> {
   popup.removeMenu?.();
   await popup.loadURL(authUrl);
 
-  const verifier: string = await new Promise((resolve, reject) => {
+  const verifier = await new Promise((resolve, reject) => {
     const { webContents } = popup;
 
     const cleanup = () => {
@@ -93,7 +106,7 @@ export async function ensureLogin(parent?: BrowserWindow): Promise<OAuthToken> {
       popup.removeListener("closed", handleClosed);
     };
 
-    const handleNavigation = (event: ElectronEvent, url: string) => {
+    const handleNavigation = (event, url) => {
       if (!url.startsWith(CALLBACK_SCHEME)) return;
       event.preventDefault();
       const verifierParam = new URL(url).searchParams.get("oauth_verifier");
@@ -122,7 +135,8 @@ export async function ensureLogin(parent?: BrowserWindow): Promise<OAuthToken> {
   const accText = await accResp.text();
   const acc = Object.fromEntries(new URLSearchParams(accText).entries());
 
-  const token: OAuthToken = {
+  /** @type {OAuthToken} */
+  const token = {
     oauth_token: acc["oauth_token"],
     oauth_token_secret: acc["oauth_token_secret"],
     user_nsid: acc["user_nsid"],
@@ -136,11 +150,11 @@ export async function ensureLogin(parent?: BrowserWindow): Promise<OAuthToken> {
 }
 
 // ====== Signed REST requests ======
-async function flickr(method: string, params: Record<string, string | number>) {
+async function flickr(method, params) {
   const token = readToken();
   if (!token) throw new Error("Not authenticated");
 
-  const baseParams: Record<string, string> = {
+  const baseParams = {
     method,
     api_key: FLICKR.apiKey,
     format: "json",
@@ -162,7 +176,12 @@ async function flickr(method: string, params: Record<string, string | number>) {
 }
 
 // ====== High-level API ======
-export async function getAlbums(page = 1, perPage = 24): Promise<AlbumsPage> {
+/**
+ * @param {number} [page]
+ * @param {number} [perPage]
+ * @returns {Promise<AlbumsPage>}
+ */
+export async function getAlbums(page = 1, perPage = 24) {
   let token = readToken();
   if (!token?.user_nsid) {
     token = await ensureLogin();
@@ -179,9 +198,10 @@ export async function getAlbums(page = 1, perPage = 24): Promise<AlbumsPage> {
     per_page: perPage
   });
 
-  const sets = data.photosets.photoset as any[];
+  const sets = Array.isArray(data.photosets?.photoset) ? data.photosets.photoset : [];
   // Fetch a small thumbnail for each album via primary photo
-  const items: Album[] = [];
+  /** @type {Album[]} */
+  const items = [];
   for (const s of sets) {
     const primary = s.primary;
     const info = await flickr("flickr.photos.getInfo", { photo_id: primary });
@@ -189,8 +209,9 @@ export async function getAlbums(page = 1, perPage = 24): Promise<AlbumsPage> {
     // Construct a small thumbnail (q = 150 square) using size suffix when available
     // If url_q is not in getInfo, call getSizes to be safe:
     const sizes = await flickr("flickr.photos.getSizes", { photo_id: primary });
-    const q = (sizes.sizes.size as any[]).find((x) => x.label === "Large Square" || x.label === "Large 150");
-    const thumb = q?.source ?? (sizes.sizes.size[0]?.source ?? "");
+    const allSizes = Array.isArray(sizes.sizes?.size) ? sizes.sizes.size : [];
+    const q = allSizes.find((x) => x.label === "Large Square" || x.label === "Large 150");
+    const thumb = q?.source ?? (allSizes[0]?.source ?? "");
 
     items.push({
       id: s.id,
@@ -210,11 +231,17 @@ export async function getAlbums(page = 1, perPage = 24): Promise<AlbumsPage> {
   };
 }
 
-export async function getAlbumPhotos(photosetId: string, sizePref: SizePref): Promise<DownloadImage[]> {
+/**
+ * @param {string} photosetId
+ * @param {SizePref} sizePref
+ * @returns {Promise<DownloadImage[]>}
+ */
+export async function getAlbumPhotos(photosetId, sizePref) {
   // Pull all photos (iterate pages if needed)
   let page = 1;
   const per_page = 500;
-  const result: DownloadImage[] = [];
+  /** @type {DownloadImage[]} */
+  const result = [];
 
   do {
     const data = await flickr("flickr.photosets.getPhotos", {
@@ -223,7 +250,7 @@ export async function getAlbumPhotos(photosetId: string, sizePref: SizePref): Pr
       per_page,
       extras: "url_o,url_k,url_h,url_l,url_c,url_z,url_m,url_q"
     });
-    const photos = data.photoset.photo as any[];
+    const photos = Array.isArray(data.photoset?.photo) ? data.photoset.photo : [];
 
     for (const p of photos) {
       const best = pickBestUrl(p, sizePref);
@@ -238,9 +265,9 @@ export async function getAlbumPhotos(photosetId: string, sizePref: SizePref): Pr
   return result;
 }
 
-function pickBestUrl(p: any, pref: SizePref) {
+function pickBestUrl(p, pref) {
   // Preference mapping by Flickr's size list; fall back gracefully.
-  const orderByPref: Record<SizePref, string[]> = {
+  const orderByPref = {
     Small: ["url_m", "url_z", "url_c", "url_l", "url_o"],
     Medium: ["url_z", "url_c", "url_l", "url_o", "url_m"],
     Large: ["url_l", "url_h", "url_k", "url_o", "url_c"],
@@ -248,7 +275,7 @@ function pickBestUrl(p: any, pref: SizePref) {
   };
   const candidates = orderByPref[pref];
   for (const k of candidates) {
-    if (p[k]) return p[k] as string;
+    if (p[k]) return p[k];
   }
   return undefined;
 }
