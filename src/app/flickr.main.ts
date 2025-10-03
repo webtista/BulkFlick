@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { BrowserWindow } from "electron";
+import { BrowserWindow, type Event as ElectronEvent } from "electron";
 import { URLSearchParams } from "node:url";
 import { readToken, writeToken } from "./secure-store.js";
 import type { OAuthToken, AlbumsPage, Album, DownloadImage, SizePref, FlickrSecrets } from "./types.js";
@@ -85,20 +85,30 @@ export async function ensureLogin(parent?: BrowserWindow): Promise<OAuthToken> {
   popup.removeMenu?.();
   await popup.loadURL(authUrl);
 
-  const ses = popup.webContents.session;
   const verifier: string = await new Promise((resolve, reject) => {
-    const handler = (details: any) => {
-      if (details.url.startsWith(CALLBACK_SCHEME)) {
-        const url = new URL(details.url);
-        const v = url.searchParams.get("oauth_verifier");
-        // clean up listeners
-        ses.webRequest.onBeforeRequest(null as any);
-        resolve(v || "");
-        popup.close();
-      }
+    const { webContents } = popup;
+
+    const cleanup = () => {
+      webContents.removeListener("will-redirect", handleNavigation);
+      popup.removeListener("closed", handleClosed);
     };
-    ses.webRequest.onBeforeRequest({ urls: [CALLBACK_SCHEME + "*"] }, handler);
-    popup.on("closed", () => reject(new Error("Auth window closed")));
+
+    const handleNavigation = (event: ElectronEvent, url: string) => {
+      if (!url.startsWith(CALLBACK_SCHEME)) return;
+      event.preventDefault();
+      const verifierParam = new URL(url).searchParams.get("oauth_verifier");
+      cleanup();
+      resolve(verifierParam || "");
+      popup.close();
+    };
+
+    const handleClosed = () => {
+      cleanup();
+      reject(new Error("Auth window closed"));
+    };
+
+    webContents.on("will-redirect", handleNavigation);
+    popup.on("closed", handleClosed);
   });
 
   if (!verifier) throw new Error("No oauth_verifier returned");
