@@ -1,28 +1,43 @@
-import type { Album, AlbumsPage, SizePref } from "./app/types.js";
+/**
+ * @typedef {import("./app/types.js").Album} Album
+ * @typedef {import("./app/types.js").AlbumsPage} AlbumsPage
+ * @typedef {import("./app/types.js").SizePref} SizePref
+ */
 
-const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
+const $ = (sel) => document.querySelector(sel);
+const getRequired = (sel) => {
+  const el = $(sel);
+  if (!el) throw new Error(`Missing element: ${sel}`);
+  return el;
+};
 
-const welcome = $("#welcome");
-const appView = $("#app");
-const loginBtn = $("#loginBtn");
-const searchInput = $("#search") as HTMLInputElement;
-const searchBtn = $("#searchBtn");
-const albumsGrid = $("#albumsGrid");
-const albumsCount = $("#albumsCount");
-const downloadSelectedBtn = $("#downloadSelected") as HTMLButtonElement;
+const welcome = getRequired("#welcome");
+const appView = getRequired("#app");
+const loginBtn = getRequired("#loginBtn");
+const searchInput = /** @type {HTMLInputElement} */ (getRequired("#search"));
+const searchBtn = getRequired("#searchBtn");
+const albumsGrid = getRequired("#albumsGrid");
+const albumsCount = getRequired("#albumsCount");
+const downloadSelectedBtn = /** @type {HTMLButtonElement} */ (getRequired("#downloadSelected"));
 
-const sizeRadio = () => (document.querySelector<HTMLInputElement>('input[name="imgsize"]:checked')?.value ?? "Small") as SizePref;
+const sizeRadio = () => {
+  const selected = /** @type {HTMLInputElement|null} */ (
+    document.querySelector('input[name="imgsize"]:checked')
+  );
+  return /** @type {SizePref} */ (selected?.value || "Small");
+};
 
 let currentPage = 1;
 let totalPages = 1;
-let albums: Album[] = [];
+/** @type {Album[]} */
+let albums = [];
 
-function toggle(el: HTMLElement, show: boolean) { el.classList.toggle("hidden", !show); }
-function setCount(page: number, pages: number, total: number) {
+const toggle = (el, show) => el.classList.toggle("hidden", !show);
+const setCount = (page, pages, total) => {
   albumsCount.textContent = `Page ${page}/${pages} • ${total} total`;
-}
+};
 
-function cardTemplate(a: Album) {
+const cardTemplate = (a) => {
   return `
   <article data-id="${a.id}" class="group rounded-2xl ring-1 ring-zinc-800 bg-zinc-900/50 overflow-hidden">
     <div class="aspect-[4/3] bg-zinc-800 overflow-hidden">
@@ -38,9 +53,9 @@ function cardTemplate(a: Album) {
       </div>
     </div>
   </article>`;
-}
+};
 
-function pagerTemplate() {
+const pagerTemplate = () => {
   return `
     <div class="col-span-full flex items-center justify-center gap-2 mt-1">
       <button id="prevPage" class="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 ring-1 ring-zinc-700" ${currentPage<=1?"disabled":""}>Prev</button>
@@ -48,9 +63,12 @@ function pagerTemplate() {
       <button id="nextPage" class="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 ring-1 ring-zinc-700" ${currentPage>=totalPages?"disabled":""}>Next</button>
     </div>
   `;
-}
+};
 
-function render(albumsPage: AlbumsPage) {
+/**
+ * @param {AlbumsPage} albumsPage
+ */
+const render = (albumsPage) => {
   currentPage = albumsPage.page;
   totalPages = albumsPage.pages;
   albums = albumsPage.items;
@@ -58,18 +76,20 @@ function render(albumsPage: AlbumsPage) {
   const grid = albums.map(cardTemplate).join("") + pagerTemplate();
   albumsGrid.innerHTML = grid;
   setCount(albumsPage.page, albumsPage.pages, albumsPage.total);
-}
+};
 
-async function refresh(page = 1) {
-  const res = await window.bulkflick.getAlbums(page, 12);
+const api = window.bulkflick;
+
+const refresh = async (page = 1) => {
+  const res = await api.getAlbums(page, 12);
   render(res);
-}
+};
 
-loginBtn?.addEventListener("click", async () => {
+loginBtn.addEventListener("click", async () => {
   loginBtn.setAttribute("disabled", "true");
   loginBtn.textContent = "Opening Flickr…";
   try {
-    await window.bulkflick.login();
+    await api.login();
     toggle(welcome, false);
     toggle(appView, true);
     await refresh(1);
@@ -82,13 +102,13 @@ loginBtn?.addEventListener("click", async () => {
   }
 });
 
-searchBtn?.addEventListener("click", async () => {
+searchBtn.addEventListener("click", async () => {
   // For now, search is a refresh; later: call flickr.people.getPhotosets with primary filtering or text
   await refresh(1);
 });
 
-albumsGrid?.addEventListener("click", async (e) => {
-  const t = e.target as HTMLElement;
+albumsGrid.addEventListener("click", async (e) => {
+  const t = /** @type {HTMLElement} */ (e.target);
   if (t.id === "prevPage" && currentPage > 1) {
     await refresh(currentPage - 1);
     return;
@@ -98,15 +118,16 @@ albumsGrid?.addEventListener("click", async (e) => {
     return;
   }
 
-  const btn = t.closest("[data-dl]") as HTMLElement | null;
-  if (!btn) return;
+  const btn = t.closest("[data-dl]");
+  if (!(btn instanceof HTMLElement)) return;
 
-  const id = btn.getAttribute("data-dl")!;
+  const id = btn.getAttribute("data-dl");
+  if (!id) return;
   btn.setAttribute("disabled", "true");
   btn.classList.add("opacity-60");
   btn.textContent = "Fetching…";
   try {
-    const urls = await window.bulkflick.getAlbumPhotos(id, sizeRadio());
+    const urls = await api.getAlbumPhotos(id, sizeRadio());
     console.log("Album URLs", urls);
     // TODO: queue real downloads via IPC (filesystem). For now, just notify count:
     btn.textContent = `Got ${urls.length} URLs`;
@@ -118,13 +139,13 @@ albumsGrid?.addEventListener("click", async (e) => {
   }
 });
 
-downloadSelectedBtn?.addEventListener("click", () => {
+downloadSelectedBtn.addEventListener("click", () => {
   alert("Select albums via future multi-select, then batch download (TODO).");
 });
 
 // Auto-reveal app if already logged in
 (async () => {
-  const st = await window.bulkflick.authStatus();
+  const st = await api.authStatus();
   if (st.token) {
     toggle(welcome, false);
     toggle(appView, true);
